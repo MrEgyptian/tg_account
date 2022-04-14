@@ -369,4 +369,15 @@ if __name__=='__main__':
  cfg=parser.read('config.ini')
  print('type "help" if you need help :)')
  while True:
-  prompt(cmd=input('cmd ~> '))
+  try:
+   prompt(cmd=input('cmd ~> '))
+  except KeyboardInterrupt:
+   try:
+    exit_prompt=str(input('\nis it time to say goodbye [Y/n]: '))
+   except:
+    exit_prompt='n'
+   if(exit_prompt.lower()=='n'):
+    print('it\'s nice being with you :)')
+   else:
+    print('Bye :"(')
+    sys.exit(0)
