@@ -1,5 +1,5 @@
 #!/bin/python
-import asyncio,sys,\
+import asyncio,sys,os,\
 requests,readline,\
 json,random,\
 time,traceback
@@ -239,7 +239,8 @@ class sms_api:
     self.number=answer['ACCESS_NUMBER'][1]
    except:
     print('no numbers are available')
-    sys.exit()
+    #sys.exit()
+    return False
   else:
    raise Exception(f'Failed Getting the number {resp.status_code}')
   return answer
@@ -271,8 +272,8 @@ class sms_api:
   status={
    status[0]:status[:1]
   }
-  self.code_staus=status
-  #print(status)
+  self.code_status=status
+  print(status)
   return status
  def cancel(self,n_id=''):
   if(n_id==''):
@@ -288,7 +289,7 @@ class sms_api:
   return status
  def return_code(self,wait=5,times=10):
   i=1
-  while(self.get_code()!='STATUS_OK'):
+  while(self.get_code().get('STATUS_OK')!=['STATUS_OK']):
    print(f'[{i}]{self.get_code()} {wait} seconds')
    time.sleep(wait)
    i=i+1
@@ -298,19 +299,74 @@ class sms_api:
     sys.exit()
   code=self.code_status['STATUS_OK']
   return code
-if __name__=='__main__':
- parser=cp.ConfigParser()
- cfg=parser.read('config.ini')
+def cli():
  api_key=parser.get('sim_api','active_ru_key')
  sms=sms_api(key=api_key)
  balance=sms.get_balance()
- print(balance)
+# print(balance)
  tg_session=telegram(parser.get('telegram','api_id'),parser.get('telegram','api_hash'))
- country=random.choice(list(sms.countries.keys()))
- print(country)
- sms.buy(country=country)
+# country=random.choice(list(sms.countries.keys()))
+ country=parser.get('sim_api','country')
+ #print(country)
+ cli.bal=balance
+ cli.land=country
+ buy_status=sms.buy(country=country)
+ if(buy_status==False):
+  return False
  number=sms.number
  try:
   tg_session.create_account(number,code=sms.return_code)
  except Exception as e:
   print(e,sms.cancel(),traceback.format_exc())
+def prompt(cmd=str()):
+ cmd=cmd.lower()
+ if(cmd in ['help','?','h']):
+  print('''
+   h|help|?      : returning this help message
+   TGConfig      : to print telegram config
+   APIConfig     : to print SMS API config
+   start [times] : to start the script
+   examples:
+    Making 10 accounts:
+     start 10
+    Making a single account
+     start
+  ''')
+ elif(cmd in [str(),'\n']):
+  pass
+ elif(cmd.startswith('!')):
+  os.system(cmd[1:])
+ elif(cmd in ['tgconfig','tgconf','tgc','telegramconf']):
+  tgconfig=dict(parser.items('telegram'))
+  for conf,val in tgconfig.items():
+   print(f"{conf} -> {val}")
+ elif(cmd in ['apiconfig','apiconf']):
+  tgconfig=dict(parser.items('sim_api'))
+  for conf,val in tgconfig.items():
+   print(f"{conf} -> {val}")
+ elif('start' in cmd):
+  args=cmd.split('\x20')
+  if(len(args)>1):
+   try:
+    times=int(args[1])
+    for i in range(times):
+     register_status=cli()
+     txt=str()
+     if(register_status==True):
+      txt='Done'
+     else:
+      txt='Fail :('
+     print(f'[{i+1}][{cli.bal},{cli.land}] {txt} at {time.ctime()}')
+   except Exception as e:
+    print(f'{e} invalid syntax')
+  else:
+   print(cli())
+ else:
+  print(f'{cmd}: command not found')
+  return 0
+if __name__=='__main__':
+ parser=cp.ConfigParser()
+ cfg=parser.read('config.ini')
+ print('type "help" if you need help :)')
+ while True:
+  prompt(cmd=input('cmd ~> '))
