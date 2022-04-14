@@ -327,9 +327,9 @@ def prompt(cmd=str()):
    APIConfig     : to print SMS API config
    start [times] : to start the script
    examples:
-    Making 10 accounts:
+   Making 10 accounts:
      start 10
-    Making a single account
+   Making a single account:
      start
   ''')
  elif(cmd in [str(),'\n']):
