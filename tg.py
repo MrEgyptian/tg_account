@@ -1,28 +1,32 @@
 #!/bin/python
-import asyncio,sys,os,\
+import asyncio,sys,os,names,re,\
 requests,readline,\
-json,random,\
+json,random,socks,\
 time,traceback
 import configparser as cp
 import telethon
 from telethon import TelegramClient
 class telegram:
- def __init__(self,api_id,api_hash):
-  self.api_id=api_id;self.api_hash=api_hash
+ def __init__(self,api_id,api_hash,proxy=None):
+  self.api_id=api_id;self.api_hash=api_hash;self.proxy=proxy
  def create_account(self,number,fname='user'\
  ,lname=str(),\
  code=lambda :'code'):
-  #print(number)
+  print(number,fname,lname)
   try:
-    client = TelegramClient(f'sessions/{fname}_{number}',\
+   if(self.proxy!=None):
+    client = TelegramClient(f'sessions/{fname}-lname_{number}',\
      self.api_id, self.api_hash)
-    client.start(\
+   else:
+    client = TelegramClient(f'sessions/{fname}-lname_{number}',\
+     self.api_id, self.api_hash)
+   client.start(\
        phone=number,\
        force_sms=True,\
        first_name='user',\
        last_name='',\
        code_callback=code)
-    return 'done'
+   return 'done'
   except telethon.errors.rpcerrorlist.PhoneNumberBannedError:
    return 'banned'
   except telethon.errors.rpcerrorlist.FloodWaitError:
@@ -278,9 +282,10 @@ class sms_api:
    }
   resp=requests.get(self.api_url,params=payload)
   status=resp.text.split(':')
-  status={
-   status[0]:status[:1]
-  }
+  if(len(status)>1):
+   status={
+    status[0]:status[:1]
+   }
   self.code_status=status
   #print(status)
   return status
@@ -298,36 +303,53 @@ class sms_api:
   return status
  def return_code(self,wait=5,times=10):
   i=1
-  while(self.get_code().get('STATUS_OK')!=['STATUS_OK']):
-   print(f'[{i}]{self.number} {self.get_code()} {wait} seconds')
+  print(self.get_code())
+  while(self.get_code()==['STATUS_WAIT_CODE']):
+   print(f'[{i}]{self.number} Waiting {wait} seconds',end='\r')
    time.sleep(wait)
    i=i+1
    if(i>=10):
-    print('The server is not responding')
+    print('\nThe server is not responding')
     self.cancel()
     sys.exit()
   code=self.code_status['STATUS_OK']
+  print(code)
   return code
 def cli():
  api_key=parser.get('sim_api','active_ru_key')
  sms=sms_api(key=api_key)
  balance=sms.get_balance()
 # print(balance)
+ cli.proxy=parser.get('telegram','proxy')
  cli.balance=balance
- tg_session=telegram(parser.get('telegram','api_id'),parser.get('telegram','api_hash'))
+ if(re.fullmatch(r'(\d{1,3}\.){3}\d{1,3}:(\d+)',cli.proxy)!=None):
+  proxy_host=cli.proxy.split(':')[0]
+  proxy_port=cli.proxy.split(':')[1]
+  tg_session=telegram(parser.get('telegram','api_id'),\
+      parser.get('telegram','api_hash'),\
+      proxy=(socks.SOCKS5,cli.proxy[0],cli.proxy[1])\
+      )
+ else:
+   tg_session=telegram(parser.get('telegram','api_id'),\
+        parser.get('telegram','api_hash')\
+        )
  #country=random.choice(list(sms.countries.keys()))
- country=parser.get('sim_api','country')
  #print(country)
  cli.bal=balance
+ country=parser.get('sim_api','country')
  cli.land=country
  buy_status=sms.buy(country=country)
  if(buy_status==False):
   return False
  number=sms.number
  try:
-  cli.tg_status=tg_session.create_account(number,code=sms.return_code)
+  cli.tg_status=tg_session.create_account(number,\
+  code=sms.return_code,\
+  fname=names.get_first_name(),\
+  lname=names.get_last_name())
  except Exception as e:
   print(e,sms.cancel(),traceback.format_exc())
+ return cli.tg_status
 def prompt(cmd=str()):
  cmd=cmd.lower()
  if(cmd in ['help','?','h']):
@@ -344,9 +366,37 @@ def prompt(cmd=str()):
    Making a single account:
      start
   ''')
- elif(cmd=='register'):
-  cmd=cmd.split('\x20')
-  
+ elif('set' in cmd):
+  args=cmd.split('\x20')
+  sim_api_items=dict(parser.items('sim_api'))
+  tg_api_items=dict(parser.items('telegram'))
+  #print(args[1] in sim_api_items)
+  config=None
+  if(len(args)>2):
+   if(args[1] in sim_api_items):
+    config='sim_api'
+   elif(args[1] in tg_api_items):
+    config='telegram'
+   else:
+    #print('')
+    pass
+   if(config!=None):
+    parser.set(config,args[1],args[2].capitalize())
+    print(f'{args[1]} -> {args[2].capitalize()}')
+   else:
+    print(f'unknown option "{args[1]}" ')
+  else:
+   print(f'No enough arguments for command "{args[0]}"')
+ elif('register' in cmd):
+  args=cmd.split('\x20')
+  tg_session=telegram(parser.get('telegram','api_id'),\
+  parser.get('telegram','api_hash'))
+  try:
+   status=tg_session.create_account(args[1],code=input('[*] Code: '))
+   print(status)
+   return True
+  except:
+   print('error')
  elif(cmd in ['bal','balance']):
   api_key=parser.get('sim_api','active_ru_key')
   sms=sms_api(key=api_key)
@@ -378,7 +428,7 @@ def prompt(cmd=str()):
       txt='Fail :('
      print(f'[{i+1}][{cli.bal},{cli.land}] {txt} at {time.ctime()}')
    except Exception as e:
-    print(f'{e} invalid syntax')
+    print(f'invalid syntax')
   else:
    print(cli())
  else:
@@ -401,3 +451,6 @@ if __name__=='__main__':
    else:
     print('Bye :"(')
     sys.exit(0)
+  except EOFError:
+   print('GoodBye :(')
+   sys.exit(0)
