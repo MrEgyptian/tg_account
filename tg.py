@@ -4,6 +4,7 @@ requests,readline,\
 json,random,\
 time,traceback
 import configparser as cp
+import telethon
 from telethon import TelegramClient
 class telegram:
  def __init__(self,api_id,api_hash):
@@ -12,14 +13,22 @@ class telegram:
  ,lname=str(),\
  code=lambda :'code'):
   #print(number)
-  client = TelegramClient(f'sessions/{fname}_{number}',\
-   self.api_id, self.api_hash)
-  client.start(\
-  phone=number,\
-  force_sms=True,\
-  first_name='user',\
-  last_name='',\
-  code_callback=code)
+  try:
+    client = TelegramClient(f'sessions/{fname}_{number}',\
+     self.api_id, self.api_hash)
+    client.start(\
+       phone=number,\
+       force_sms=True,\
+       first_name='user',\
+       last_name='',\
+       code_callback=code)
+    return 'done'
+  except telethon.errors.rpcerrorlist.PhoneNumberBannedError:
+   return 'banned'
+  except telethon.errors.rpcerrorlist.FloodWaitError:
+   return 'flood'
+  except Exception as e:
+   return f"Unknown Error '{e}'"
 class sms_api:
  def __init__(self,\
  api_url='https://sms-activate.ru/stubs/handler_api.php',\
@@ -273,7 +282,7 @@ class sms_api:
    status[0]:status[:1]
   }
   self.code_status=status
-  print(status)
+  #print(status)
   return status
  def cancel(self,n_id=''):
   if(n_id==''):
@@ -290,7 +299,7 @@ class sms_api:
  def return_code(self,wait=5,times=10):
   i=1
   while(self.get_code().get('STATUS_OK')!=['STATUS_OK']):
-   print(f'[{i}]{self.get_code()} {wait} seconds')
+   print(f'[{i}]{self.number} {self.get_code()} {wait} seconds')
    time.sleep(wait)
    i=i+1
    if(i>=10):
@@ -304,8 +313,9 @@ def cli():
  sms=sms_api(key=api_key)
  balance=sms.get_balance()
 # print(balance)
+ cli.balance=balance
  tg_session=telegram(parser.get('telegram','api_id'),parser.get('telegram','api_hash'))
-# country=random.choice(list(sms.countries.keys()))
+ #country=random.choice(list(sms.countries.keys()))
  country=parser.get('sim_api','country')
  #print(country)
  cli.bal=balance
@@ -315,7 +325,7 @@ def cli():
   return False
  number=sms.number
  try:
-  tg_session.create_account(number,code=sms.return_code)
+  cli.tg_status=tg_session.create_account(number,code=sms.return_code)
  except Exception as e:
   print(e,sms.cancel(),traceback.format_exc())
 def prompt(cmd=str()):
@@ -324,6 +334,8 @@ def prompt(cmd=str()):
   print('''
    h|help|?      : returning this help message
    TGConfig      : to print telegram config
+   register <number> : to register a new number without an API
+   bal|balance      : to print SMS API balance
    APIConfig     : to print SMS API config
    start [times] : to start the script
    examples:
@@ -332,6 +344,14 @@ def prompt(cmd=str()):
    Making a single account:
      start
   ''')
+ elif(cmd=='register'):
+  cmd=cmd.split('\x20')
+  
+ elif(cmd in ['bal','balance']):
+  api_key=parser.get('sim_api','active_ru_key')
+  sms=sms_api(key=api_key)
+  balance=sms.get_balance()
+  print(f'available balance :{balance}')
  elif(cmd in [str(),'\n']):
   pass
  elif(cmd.startswith('!')):
