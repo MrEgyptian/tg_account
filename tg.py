@@ -356,7 +356,8 @@ def prompt(cmd=str()):
   print('''
    h|help|?      : returning this help message
    TGConfig      : to print telegram config
-   register <number> : to register a new number without an API
+   register <number> :to register a new number\
+                           (no API)
    bal|balance      : to print SMS API balance
    APIConfig     : to print SMS API config
    start [times] : to start the script
@@ -438,6 +439,12 @@ if __name__=='__main__':
  parser=cp.ConfigParser()
  cfg=parser.read('config.ini')
  print('type "help" if you need help :)')
+ print("""
+╔╦╗╔═╗   ╔═╗┌─┐┌─┐┌─┐┬ ┬┌┐┌┌┬┐  ╔═╗┬─┐┌─┐┌─┐┌┬┐┌─┐┬─┐
+ ║ ║ ╦───╠═╣│  │  │ ││ ││││ │   ║  ├┬┘├┤ ├─┤ │ │ │├┬┘
+ ╩ ╚═╝   ╩ ╩└─┘└─┘└─┘└─┘┘└┘ ┴   ╚═╝┴└─└─┘┴ ┴ ┴ └─┘┴└─
+            github.com/ahmedMahmed8a
+ """)
  while True:
   try:
    prompt(cmd=input('cmd ~> '))
