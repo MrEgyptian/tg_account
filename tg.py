@@ -1,11 +1,15 @@
 #!/bin/python
 import asyncio,sys,os,names,re,\
-requests,readline,\
+requests,\
 json,random,socks,\
 time,traceback
 import configparser as cp
 import telethon
 from telethon import TelegramClient
+if(os.name=='posix'):
+ import readline
+else:
+ pass
 class telegram:
  def __init__(self,api_id,api_hash,proxy=None):
   self.api_id=api_id;self.api_hash=api_hash;self.proxy=proxy
@@ -426,30 +430,46 @@ def prompt(cmd=str()):
      register_status=cli()
      txt=str()
      if(register_status==True):
-      txt='Done'
+      txt=color('@Done').txt
      else:
-      txt='Fail :('
-     print(f'[{i+1}][{cli.bal},{cli.land}] {txt} at {time.ctime()}')
+      txt=color('$Fail :(').txt
+     color(f'![#{i+1}!]![@{cli.bal}$,#{cli.land}!]! {txt} at %{time.ctime()}^').print()
    except Exception as e:
-    print(f'invalid syntax')
+    color(f'$invalid syntax').print()
   else:
    print(cli())
  else:
-  print(f'{cmd}: command not found')
+  color(f'${cmd}!: %command not found.').print()
   return 0
+class color:
+ def __init__(self,txt):
+  if(os.name=='posix'):
+   txt=txt.replace("!","\x1b[94m") # Light_blue
+   txt=txt.replace("@","\x1b[92m") # Light_green
+   txt=txt.replace("#","\x1b[95m") # Magenta
+   txt=txt.replace("$","\x1b[91m") # Light_red
+   txt=txt.replace("%","\x1b[93m") # Light_yellow
+   txt=txt.replace("^","\x1b[0m")  # Block
+  self.txt=txt
+ def print(self):
+  print(self.txt)
 if __name__=='__main__':
  parser=cp.ConfigParser()
  cfg=parser.read('config.ini')
  print('type "help" if you need help :)')
- print("""
-╔╦╗╔═╗   ╔═╗┌─┐┌─┐┌─┐┬ ┬┌┐┌┌┬┐  ╔═╗┬─┐┌─┐┌─┐┌┬┐┌─┐┬─┐
- ║ ║ ╦───╠═╣│  │  │ ││ ││││ │   ║  ├┬┘├┤ ├─┤ │ │ │├┬┘
- ╩ ╚═╝   ╩ ╩└─┘└─┘└─┘└─┘┘└┘ ┴   ╚═╝┴└─└─┘┴ ┴ ┴ └─┘┴└─
-            github.com/ahmedMahmed8a
- """)
+ color("""
+!╔╦╗!╔═╗   @╔═╗#┌─┐┌─┐┌─┐┬ ┬┌┐┌┌┬┐  @╔═╗#┬─┐┌─┐┌─┐┌┬┐┌─┐┬─┐
+! ║ !║ ╦───@╠═╣#│  │  │ ││ ││││ │   @║  #├┬┘├┤ ├─┤ │ │ │├┬┘
+! ╩ !╚═╝   @╩ ╩#└─┘└─┘└─┘└─┘┘└┘ ┴   @╚═╝#┴└─└─┘┴ ┴ ┴ └─┘┴└─
+            @github.com#/%ahmed$M%ahmed$8a^
+ """).print()
  while True:
   try:
-   prompt(cmd=input('cmd ~> '))
+   prompt(\
+    cmd=input(\
+    color('#cmd !~$>@ ').txt #coloring prompt
+    )#closing input
+    )
   except KeyboardInterrupt:
    try:
     exit_prompt=str(input('\nis it time to say goodbye [Y/n]: '))
