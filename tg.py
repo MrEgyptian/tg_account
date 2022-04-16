@@ -359,20 +359,20 @@ def cli():
 def prompt(cmd=str()):
  cmd=cmd.lower()
  if(cmd in ['help','?','h']):
-  print('''
-   h|help|?      : returning this help message
-   TGConfig      : to print telegram config
-   register <number> :to register a new number\
-                           (no API)
-   bal|balance      : to print SMS API balance
-   APIConfig     : to print SMS API config
-   start [times] : to start the script
-   examples:
-    Making 10 accounts:
-      start 10
-    Making a single account:
-      start
-  ''')
+  color('''
+   !h$|!help$|!?      $: %returning this help message
+   !TGConfig      $: %to print telegram config
+   !register $<!number$> $:%to register a new number
+                           $(%no !API$)
+   !bal$|!balance      $: %to print SMS API balance
+   !APIConfig     $: %to print SMS API config
+   !start $[!times$] $: %to start the script
+   !examples$:
+    #Making 10 accounts:
+      @start 10
+    #Making a single account:
+      @start
+  ''').print()
  elif('set' in cmd):
   args=cmd.split('\x20')
   sim_api_items=dict(parser.items('sim_api'))
@@ -416,11 +416,12 @@ def prompt(cmd=str()):
  elif(cmd in ['tgconfig','tgconf','tgc','telegramconf']):
   tgconfig=dict(parser.items('telegram'))
   for conf,val in tgconfig.items():
-   print(f"{conf} -> {val}")
+   color(f"!{conf} $-> @{val}").print()
  elif(cmd in ['apiconfig','apiconf']):
-  tgconfig=dict(parser.items('sim_api'))
-  for conf,val in tgconfig.items():
-   print(f"{conf} -> {val}")
+  apiconfig=dict(parser.items('sim_api'))
+  for conf,val in apiconfig.items():
+   #print(f"{conf} -> {val}")
+   color(f"!{conf} $-> @{val}").print()
  elif('start' in cmd):
   args=cmd.split('\x20')
   if(len(args)>1):
@@ -456,7 +457,8 @@ class color:
 if __name__=='__main__':
  parser=cp.ConfigParser()
  cfg=parser.read('config.ini')
- print('type "help" if you need help :)')
+ os.system('clear')
+ color('^type $"!help$"^ if you need help %:$)').print()
  color("""
 !╔╦╗!╔═╗   @╔═╗#┌─┐┌─┐┌─┐┬ ┬┌┐┌┌┬┐  @╔═╗#┬─┐┌─┐┌─┐┌┬┐┌─┐┬─┐
 ! ║ !║ ╦───@╠═╣#│  │  │ ││ ││││ │   @║  #├┬┘├┤ ├─┤ │ │ │├┬┘
