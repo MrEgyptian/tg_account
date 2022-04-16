@@ -303,7 +303,7 @@ class sms_api:
   return status
  def return_code(self,wait=5,times=10):
   i=1
-  print(self.get_code())
+  print(self.ask_for_code())
   while(self.get_code()==['STATUS_WAIT_CODE']):
    print(f'[{i}]{self.number} Waiting {wait} seconds',end='\r')
    time.sleep(wait)
@@ -347,6 +347,8 @@ def cli():
   code=sms.return_code,\
   fname=names.get_first_name(),\
   lname=names.get_last_name())
+  if(cli.tg_status!='done'):
+   print(sms.cancel())
  except Exception as e:
   print(e,sms.cancel(),traceback.format_exc())
  return cli.tg_status
@@ -362,10 +364,10 @@ def prompt(cmd=str()):
    APIConfig     : to print SMS API config
    start [times] : to start the script
    examples:
-   Making 10 accounts:
-     start 10
-   Making a single account:
-     start
+    Making 10 accounts:
+      start 10
+    Making a single account:
+      start
   ''')
  elif('set' in cmd):
   args=cmd.split('\x20')
