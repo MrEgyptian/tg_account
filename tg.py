@@ -451,6 +451,13 @@ class color:
    txt=txt.replace("$","\x1b[91m") # Light_red
    txt=txt.replace("%","\x1b[93m") # Light_yellow
    txt=txt.replace("^","\x1b[0m")  # Block
+  else:
+   txt=txt.replace("!","") # Light_blue
+   txt=txt.replace("@","") # Light_green
+   txt=txt.replace("#","") # Magenta
+   txt=txt.replace("$","") # Light_red
+   txt=txt.replace("%","") # Light_yellow
+   txt=txt.replace("^","")  # Block
   self.txt=txt
  def print(self):
   print(self.txt)
