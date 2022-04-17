@@ -403,7 +403,7 @@ def prompt(cmd=str()):
     pass
    if(config!=None):
     parser.set(config,args[1],args[2].capitalize())
-    print(f'{args[1]} -> {args[2].capitalize()}')
+    color(f'!{args[1]} $-> @{args[2].capitalize()}').print()
    else:
     print(f'unknown option "{args[1]}" ')
   else:
@@ -447,7 +447,7 @@ def prompt(cmd=str()):
      if(register_status==True):
       txt=color('@Done').txt
      else:
-      txt=color('$Fail !reason$: %{register_status} :(').txt
+      txt=color(f'$Fail !reason$: %{register_status} :(').txt
      color(f'![#{i+1}!]![@{cli.bal}$,#{cli.land}!]! {txt} at %{time.ctime()}^').print()
    except Exception as e:
     color(f'$invalid syntax').print()
