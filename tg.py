@@ -327,7 +327,8 @@ class sms_api:
     self.cancel()
     #sys.exit()
     return None
-  code=self.code_status.split(":")[1]
+  if(type(self.code_status)==str):
+   code=self.code_status.split(":")[1]
   print(code,self.get_code())
   return code
 def cli():
