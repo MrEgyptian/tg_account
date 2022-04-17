@@ -17,12 +17,15 @@ class telegram:
  ,lname=str(),\
  code=lambda :'code'):
   print(number,fname,lname)
+  self.fname=fname
+  self.lname=lname
+  self.session_name=f'sessions/{fname}-lname_{number}'
   try:
    if(self.proxy!=None):
-    client = TelegramClient(f'sessions/{fname}-lname_{number}',\
+    client = TelegramClient(self.session_name,\
      self.api_id, self.api_hash)
    else:
-    client = TelegramClient(f'sessions/{fname}-lname_{number}',\
+    client = TelegramClient(self.session_name,\
      self.api_id, self.api_hash)
    client.start(\
        phone=number,\
@@ -36,7 +39,12 @@ class telegram:
   except telethon.errors.rpcerrorlist.FloodWaitError:
    return 'flood'
   except Exception as e:
-   return f"Unknown Error '{e}'"
+	   return f"Unknown Error '{e}'"
+ def clear_session(self,session_name=''):
+  if(session_name==''):
+   session_name=self.session_name
+   
+  pass
 class sms_api:
  def __init__(self,\
  api_url='https://sms-activate.ru/stubs/handler_api.php',\
@@ -285,8 +293,9 @@ class sms_api:
    'id':n_id
    }
   resp=requests.get(self.api_url,params=payload)
+  #print(resp.text) #i put it just for debugging
   status=resp.text.split(':')
-  if(len(status)>1):
+  if( len(status) > 1 and not 'STATUS_OK' in status):
    status={
     status[0]:status[:1]
    }
@@ -304,20 +313,22 @@ class sms_api:
    }
   resp=requests.get(self.api_url,params=payload)
   status=resp.text
+  #self.get_code_status=status
   return status
  def return_code(self,wait=5,times=10):
   i=1
   print(self.ask_for_code())
   while(self.get_code()==['STATUS_WAIT_CODE']):
-   print(f'[{i}]{self.number} Waiting {wait} seconds',end='\r')
+   color(f'$[!{i}$]%{self.number},!status $:@{self.get_code()}! Waiting %@{wait} !seconds').print(end='\r')
    time.sleep(wait)
    i=i+1
    if(i>=10):
     print('\nThe server is not responding')
     self.cancel()
-    sys.exit()
-  code=self.code_status['STATUS_OK']
-  print(code)
+    #sys.exit()
+    return None
+  code=self.code_status.split(":")[1]
+  print(code,self.get_code())
   return code
 def cli():
  api_key=parser.get('sim_api','active_ru_key')
@@ -348,7 +359,10 @@ def cli():
  number=sms.number
  try:
   cli.tg_status=tg_session.create_account(number,\
-  code=sms.return_code,\
+  code=lambda :sms.return_code(
+   wait=int(parser.get('sim_api','sms_timeout')),
+   times=int(parser.get('sim_api','sms_wait_times'))
+   ),\
   fname=names.get_first_name(),\
   lname=names.get_last_name())
   if(cli.tg_status!='done'):
@@ -433,7 +447,7 @@ def prompt(cmd=str()):
      if(register_status==True):
       txt=color('@Done').txt
      else:
-      txt=color('$Fail :(').txt
+      txt=color('$Fail !reason$: %{register_status} :(').txt
      color(f'![#{i+1}!]![@{cli.bal}$,#{cli.land}!]! {txt} at %{time.ctime()}^').print()
    except Exception as e:
     color(f'$invalid syntax').print()
@@ -459,8 +473,8 @@ class color:
    txt=txt.replace("%","") # Light_yellow
    txt=txt.replace("^","")  # Block
   self.txt=txt
- def print(self):
-  print(self.txt)
+ def print(self,**args):
+  print(self.txt,**args)
 if __name__=='__main__':
  parser=cp.ConfigParser()
  cfg=parser.read('config.ini')
@@ -477,7 +491,7 @@ if __name__=='__main__':
    prompt(\
     cmd=input(\
     color('#cmd !~$>@ ').txt #coloring prompt
-    )#closing input
+    ) #closing input
     )
   except KeyboardInterrupt:
    try:
