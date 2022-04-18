@@ -39,11 +39,10 @@ class telegram:
   except telethon.errors.rpcerrorlist.FloodWaitError:
    return 'flood'
   except Exception as e:
-	   return f"Unknown Error '{e}'"
+	   return f"Unknown Error '{e}' "
  def clear_session(self,session_name=''):
   if(session_name==''):
    session_name=self.session_name
-   
   pass
 class sms_api:
  def __init__(self,\
@@ -294,11 +293,11 @@ class sms_api:
    }
   resp=requests.get(self.api_url,params=payload)
   #print(resp.text) #i put it just for debugging
-  status=resp.text.split(':')
-  if( len(status) > 1 and not 'STATUS_OK' in status):
-   status={
-    status[0]:status[:1]
-   }
+  status=resp.text
+#  if( len(status.split(":")) > 1 and 'STATUS_OK' in status):
+#   status={
+#    status[0]:status[:1]
+ #  }
   self.code_status=status
   #print(status)
   return status
@@ -317,20 +316,28 @@ class sms_api:
   return status
  def return_code(self,wait=5,times=10):
   i=1
-  print(self.ask_for_code())
-  while(self.get_code()==['STATUS_WAIT_CODE']):
-   color(f'$[!{i}$]%{self.number},!status $:@{self.get_code()}! Waiting %@{wait} !seconds').print(end='\r')
+  self.ask_for_code()
+  while(True):
+   status=self.get_code()
+   color(f'$[!{i}$]%{self.number},!status $:@{status}! Waiting %@{wait} !seconds').print(end='\r')
    time.sleep(wait)
+   if(status=='ACCESS_CANCEL'):
+    break
    i=i+1
-   if(i>=10):
-    print('\nThe server is not responding')
+   if(i>=times):
+    color('%The API is not responding$............').print()
     self.cancel()
     #sys.exit()
-    return None
-  if(type(self.code_status)==str):
-   code=self.code_status.split(":")[1]
-  print(code,self.get_code())
-  return code
+    return False
+   if(type(status)==str):
+    if(status.split(":")[0]!='STATUS_WAIT_CODE'):
+     if(status.split(":")[0]=='STATUS_OK'):
+      code=status.split(':')[1]
+      print(code)
+      return code
+     break
+     return False
+  return False
 def cli():
  api_key=parser.get('sim_api','active_ru_key')
  sms=sms_api(key=api_key)
@@ -388,6 +395,7 @@ def prompt(cmd=str()):
     #Making a single account:
       @start
   ''').print()
+  return True
  elif('set' in cmd):
   args=cmd.split('\x20')
   sim_api_items=dict(parser.items('sim_api'))
@@ -405,10 +413,13 @@ def prompt(cmd=str()):
    if(config!=None):
     parser.set(config,args[1],args[2].capitalize())
     color(f'!{args[1]} $-> @{args[2].capitalize()}').print()
+    return True
    else:
     print(f'unknown option "{args[1]}" ')
+    return False
   else:
    print(f'No enough arguments for command "{args[0]}"')
+   return False
  elif('register' in cmd):
   args=cmd.split('\x20')
   tg_session=telegram(parser.get('telegram','api_id'),\
@@ -419,11 +430,13 @@ def prompt(cmd=str()):
    return True
   except:
    print('error')
+   return False
  elif(cmd in ['bal','balance']):
   api_key=parser.get('sim_api','active_ru_key')
   sms=sms_api(key=api_key)
   balance=sms.get_balance()
   print(f'available balance :{balance}')
+  return True
  elif(cmd in [str(),'\n']):
   pass
  elif(cmd.startswith('!')):
@@ -432,11 +445,13 @@ def prompt(cmd=str()):
   tgconfig=dict(parser.items('telegram'))
   for conf,val in tgconfig.items():
    color(f"!{conf} $-> @{val}").print()
+  return True
  elif(cmd in ['apiconfig','apiconf']):
   apiconfig=dict(parser.items('sim_api'))
   for conf,val in apiconfig.items():
    #print(f"{conf} -> {val}")
    color(f"!{conf} $-> @{val}").print()
+  return True
  elif('start' in cmd):
   args=cmd.split('\x20')
   if(len(args)>1):
@@ -447,16 +462,20 @@ def prompt(cmd=str()):
      txt=str()
      if(register_status==True):
       txt=color('@Done').txt
+      return True
      else:
       txt=color(f'$Fail !reason$: %{register_status} :(').txt
      color(f'![#{i+1}!]![@{cli.bal}$,#{cli.land}!]! {txt} at %{time.ctime()}^').print()
+     if(register_status!=True):
+      return False
    except Exception as e:
     color(f'$invalid syntax').print()
+    return False
   else:
    print(cli())
  else:
   color(f'${cmd}!: %command not found.').print()
-  return 0
+  return False
 class color:
  def __init__(self,txt):
   if(os.name=='posix'):
@@ -476,6 +495,25 @@ class color:
   self.txt=txt
  def print(self,**args):
   print(self.txt,**args)
+def startup():
+ args=parser.get('startup','args').split(",")
+ command=parser.get('startup','command')
+ times=int(parser.get('startup','execute_times'))
+ till_success=parser.get('startup','till_success')
+ max_try=int(parser.get('startup','max_trys').strip())
+ cmd=f'{command} {" ".join(args)}'
+ color(f'!Executing Command $"#{cmd}$"! times$=@{times} !max_trys$=@{max_try} !till_sucess$=@{till_success}').print()
+ for i in range(times):
+  if(till_success=='True'):
+   while(not(prompt(cmd=cmd))):
+    print(f'retrying {i+1} times max:{max_try}')
+    if(i==max_try):
+     print('done')
+     break
+  else:
+   prompt(cmd=cmd)
+   print(f'trying {i+1} times max:{times}')
+   pass
 if __name__=='__main__':
  parser=cp.ConfigParser()
  cfg=parser.read('config.ini')
@@ -487,6 +525,7 @@ if __name__=='__main__':
 ! ╩ !╚═╝   @╩ ╩#└─┘└─┘└─┘└─┘┘└┘ ┴   @╚═╝#┴└─└─┘┴ ┴ ┴ └─┘┴└─
             @github.com#/%ahmed$M%ahmed$8a^
  """).print()
+ startup()
  while True:
   try:
    prompt(\
