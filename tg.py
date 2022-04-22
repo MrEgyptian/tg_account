@@ -6,24 +6,41 @@ time,traceback
 import configparser as cp
 import telethon
 from telethon import TelegramClient
+from telethon import connection as conn
 if(os.name=='posix'):
  import readline
 else:
  pass
 class telegram:
- def __init__(self,api_id,api_hash,proxy=None):
-  self.api_id=api_id;self.api_hash=api_hash;self.proxy=proxy
+ def __init__(self,api_id,api_hash,proxy=None,proxy_type=''):
+  self.api_id=api_id;self.api_hash=api_hash;
+  if(proxy!=None and proxy_type!=''):
+   self.proxy=proxy
+   self.proxy_type=proxy_type
+  elif(proxy_type=='MT_Proxy'):
+   proto=parser.get(proxy_type,'protocol')
+   server=parser.get(proxy_type,'host')
+   port=parser.get(proxy_type,'port')
+   secret=parser.get(proxy_type,'secret')
+   conns={
+   'abridged':conn.ConnectionTcpMTProxyAbridged,
+   'intermediate':conn.ConnectionTcpMTProxyIntermediate,
+   'randomized intermediate':conn.ConnectionTcpMTProxyRandomizedIntermediate
+   }
+   self.connection=conns.get(proto)
+   print(self.connection)
+  self.proxy=proxy
  def create_account(self,number,fname='user'\
  ,lname=str(),\
  code=lambda :'code'):
   print(number,fname,lname)
   self.fname=fname
   self.lname=lname
-  self.session_name=f'sessions/{fname}-lname_{number}'
+  self.session_name=f'sessions/{fname}-{lname}_{number}'
   try:
    if(self.proxy!=None):
     client = TelegramClient(self.session_name,\
-     self.api_id, self.api_hash)
+      self.api_id, self.api_hash)
    else:
     client = TelegramClient(self.session_name,\
      self.api_id, self.api_hash)
@@ -39,7 +56,7 @@ class telegram:
   except telethon.errors.rpcerrorlist.FloodWaitError:
    return 'flood'
   except Exception as e:
-	   return f"Unknown Error '{e}' "
+	   return f"Unknown Error '{e}' {traceback.format_exc()} "
  def clear_session(self,session_name=''):
   if(session_name==''):
    session_name=self.session_name
@@ -258,13 +275,15 @@ class sms_api:
    answer={
     resp.text.split(':')[0]:resp.text.split(':')[1:]
    }
+   #print(answer)
    try:
     self.number_id=answer['ACCESS_NUMBER'][0]
     self.number=answer['ACCESS_NUMBER'][1]
+    return True
    except:
-    print('no numbers are available')
+    #print('no numbers are available')
     #sys.exit()
-    return False
+    return answer
   else:
    raise Exception(f'Failed Getting the number {resp.status_code}')
   return answer
@@ -343,17 +362,18 @@ def cli():
  sms=sms_api(key=api_key)
  balance=sms.get_balance()
 # print(balance)
- cli.proxy=parser.get('telegram','proxy')
+ #cli.proxy_type=parser.get('telegram','proxy_type')
  cli.balance=balance
- if(re.fullmatch(r'(\d{1,3}\.){3}\d{1,3}:(\d+)',cli.proxy)!=None):
-  proxy_host=cli.proxy.split(':')[0]
-  proxy_port=cli.proxy.split(':')[1]
-  tg_session=telegram(parser.get('telegram','api_id'),\
-      parser.get('telegram','api_hash'),\
-      proxy=(socks.SOCKS5,cli.proxy[0],cli.proxy[1])\
-      )
- else:
-   tg_session=telegram(parser.get('telegram','api_id'),\
+ color(f'!current_balance$:%{balance}').print()
+ #if(re.fullmatch(r'(\d{1,3}\.){3}\d{1,3}:(\d+)',cli.proxy)!=None):
+ # proxy_host=cli.proxy.split(':')[0]
+ # proxy_port=cli.proxy.split(':')[1]
+ # tg_session=telegram(parser.get('telegram','api_id'),\
+ #     parser.get('telegram','api_hash'),\
+ #     proxy=(socks.SOCKS5,cli.proxy[0],cli.proxy[1])\
+ #     )
+ #else:
+ tg_session=telegram(parser.get('telegram','api_id'),\
         parser.get('telegram','api_hash')\
         )
  #country=random.choice(list(sms.countries.keys()))
@@ -362,8 +382,9 @@ def cli():
  country=parser.get('sim_api','country')
  cli.land=country
  buy_status=sms.buy(country=country)
- if(buy_status==False):
-  return False
+ if(buy_status!=True):
+  #status=buy_status
+  return list(buy_status.keys())[0]
  number=sms.number
  try:
   cli.tg_status=tg_session.create_account(number,\
@@ -378,8 +399,10 @@ def cli():
  except Exception as e:
   print(e,sms.cancel(),traceback.format_exc())
  return cli.tg_status
+#global truthy
 def prompt(cmd=str()):
  cmd=cmd.lower()
+ truthy=list()
  if(cmd in ['help','?','h']):
   color('''
    !h$|!help$|!?      $: %returning this help message
@@ -425,7 +448,7 @@ def prompt(cmd=str()):
   tg_session=telegram(parser.get('telegram','api_id'),\
   parser.get('telegram','api_hash'))
   try:
-   status=tg_session.create_account(args[1],code=input('[*] Code: '))
+   status=tg_session.create_account(args[1],code=lambda :input('[*] Code:'))
    print(status)
    return True
   except:
@@ -435,7 +458,7 @@ def prompt(cmd=str()):
   api_key=parser.get('sim_api','active_ru_key')
   sms=sms_api(key=api_key)
   balance=sms.get_balance()
-  print(f'available balance :{balance}')
+  color(f'available !balance $:%{balance}').print()
   return True
  elif(cmd in [str(),'\n']):
   pass
@@ -452,8 +475,14 @@ def prompt(cmd=str()):
    #print(f"{conf} -> {val}")
    color(f"!{conf} $-> @{val}").print()
   return True
+ elif(cmd in ['proxyconfig','pconf','proxyconf']):
+  apiconfig=dict(parser.items(parser.get('telegram','proxy_type') ))
+  for conf,val in apiconfig.items():
+   #print(f"{conf} -> {val}")
+   color(f"!{conf} $-> @{val}").print()
+  return True
  elif('start' in cmd):
-  args=cmd.split('\x20')
+  args=cmd.strip().split('\x20')
   if(len(args)>1):
    try:
     times=int(args[1])
@@ -462,17 +491,19 @@ def prompt(cmd=str()):
      txt=str()
      if(register_status==True):
       txt=color('@Done').txt
-      return True
+      truthy.append(True)
      else:
       txt=color(f'$Fail !reason$: %{register_status} :(').txt
      color(f'![#{i+1}!]![@{cli.bal}$,#{cli.land}!]! {txt} at %{time.ctime()}^').print()
      if(register_status!=True):
-      return False
+      truthy.append(False)
    except Exception as e:
-    color(f'$invalid syntax').print()
+    color(f'$invalid syntax {e} {traceback.format_exc()}').print()
     return False
   else:
-   print(cli())
+   x=cli()
+   print(x)
+   return x
  else:
   color(f'${cmd}!: %command not found.').print()
   return False
@@ -516,6 +547,10 @@ def startup():
    pass
 if __name__=='__main__':
  parser=cp.ConfigParser()
+ p={
+ 'MT_Proxy':"!MT",
+ 'SOCKS5_Proxy':"$S5"
+ }
  cfg=parser.read('config.ini')
  os.system('clear')
  color('^type $"!help$"^ if you need help %:$)').print()
@@ -525,12 +560,29 @@ if __name__=='__main__':
 ! ╩ !╚═╝   @╩ ╩#└─┘└─┘└─┘└─┘┘└┘ ┴   @╚═╝#┴└─└─┘┴ ┴ ┴ └─┘┴└─
             @github.com#/%ahmed$M%ahmed$8a^
  """).print()
- startup()
+ try:
+  startup()
+ except KeyboardInterrupt:
+  try:
+   exit_prompt=str(input('\nis it time to say goodbye [Y/n]: '))
+  except:
+   exit_prompt='n'
+  if(exit_prompt.lower()=='n'):
+   print('it\'s nice being with you :)')
+  else:
+   print('Bye :"(')
+   sys.exit(0)
+ except EOFError:
+  print('GoodBye :(')
+  sys.exit(0)
+ except Exception as e:
+  print('Error',e)
+  sys.exit(1)
  while True:
   try:
    prompt(\
     cmd=input(\
-    color('#cmd !~$>@ ').txt #coloring prompt
+    color(f'@[{p[parser.get("telegram","proxy_type")]}@]#cmd !~$>@ ').txt #coloring prompt
     ) #closing input
     )
   except KeyboardInterrupt:
@@ -546,3 +598,4 @@ if __name__=='__main__':
   except EOFError:
    print('GoodBye :(')
    sys.exit(0)
+
