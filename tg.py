@@ -406,6 +406,19 @@ class sms_api:
   status=resp.text
   #self.get_code_status=status
   return status
+ def finish(self,n_id=''):
+  if(n_id==''):
+   n_id=self.number_id
+  payload={
+   'api_key':self.token,
+   'action':'setStatus',
+   'status':'9',
+   'id':n_id
+   }
+  resp=requests.get(self.api_url,params=payload)
+  status=resp.text
+  #self.get_code_status=status
+  return status
  def return_code(self,wait=5,times=10):
   i=1
   self.ask_for_code()
