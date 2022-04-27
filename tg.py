@@ -1,5 +1,5 @@
 #!/bin/python
-import asyncio,sys,os,names,re,\
+import asyncio,sys,os,names,re,csv,\
 requests,\
 json,random,socks,\
 time,traceback
@@ -12,54 +12,127 @@ if(os.name=='posix'):
 else:
  pass
 class telegram:
- def __init__(self,api_id,api_hash,proxy=None,proxy_type=''):
+ def __init__(self,api_id,api_hash,proxy_choosing='Random',proxy=None,proxy_type=str(),proxy_list=str()):
   self.api_id=api_id;self.api_hash=api_hash;
-  if(proxy!=None and proxy_type!=''):
+  if(type(proxy)==tuple and len(proxy)==3):
    self.proxy=proxy
-   self.proxy_type=proxy_type
-  elif(proxy_type=='MT_Proxy'):
-   proto=parser.get(proxy_type,'protocol')
-   server=parser.get(proxy_type,'host')
-   port=parser.get(proxy_type,'port')
-   secret=parser.get(proxy_type,'secret')
-   conns={
-   'abridged':conn.ConnectionTcpMTProxyAbridged,
-   'intermediate':conn.ConnectionTcpMTProxyIntermediate,
-   'randomized intermediate':conn.ConnectionTcpMTProxyRandomizedIntermediate
+  else:
+   self.proxy=None
+  self.proxy_type=proxy_type
+  #print(locals())
+#  print(proxy_list,os.path.isfile(proxy_list))
+  if(os.path.isfile(proxy_list)==False):
+   proto=self.proto=parser.get(proxy_type,'protocol')
+   server=self.server=parser.get(proxy_type,'host')
+   port=self.port=parser.get(proxy_type,'port')
+   secret=self.secret=parser.get(proxy_type,'secret')
+  elif(os.path.isfile(proxy_list)==True):
+   lines=open(proxy_list).readlines()
+   self.proxies=[str(i).strip().split(":")\
+    for i in lines if not(str(i).startswith('#'))]
+   p=random.choice(self.proxies)
+   server=p[0]
+   port=p[1]
+   secret=p[2]
+   try:
+    proto=p[3].capitalize()
+    if not(proto in conns):
+     raise Exception('wrong protocol')
+   except:
+    proto='Randomized intermediate'
+  conns={
+   'Abridged':conn.ConnectionTcpMTProxyAbridged,
+   'Intermediate':conn.ConnectionTcpMTProxyIntermediate,
+   'Randomized intermediate':conn.ConnectionTcpMTProxyRandomizedIntermediate
    }
-   self.connection=conns.get(proto)
-   print(self.connection)
-  self.proxy=proxy
+  self.proxy=(server,port,secret)
+  self.connection=conns.get(proto)
+  print(*self.proxy)
+   #print(proto,self.connection)
  def create_account(self,number,fname='user'\
- ,lname=str(),\
+ ,lname=str(),accs_file='created_accounts.json',\
  code=lambda :'code'):
   print(number,fname,lname)
+  self.accs_file=accs_file
   self.fname=fname
   self.lname=lname
+  self.number=number
   self.session_name=f'sessions/{fname}-{lname}_{number}'
+  self.code=str(code())
+  #print(f"'{self.code}'")
   try:
-   if(self.proxy!=None):
+   if(self.proxy_type!=None):
     client = TelegramClient(self.session_name,\
-      self.api_id, self.api_hash)
+      self.api_id, self.api_hash,connection=self.connection,proxy=self.proxy)
    else:
     client = TelegramClient(self.session_name,\
      self.api_id, self.api_hash)
-   client.start(\
+   if(re.fullmatch('[0-9]{5}',self.code)!=None):
+     client.start(\
        phone=number,\
        force_sms=True,\
-       first_name='user',\
-       last_name='',\
-       code_callback=code)
-   return 'done'
+       first_name=fname,\
+       last_name=lname,\
+       code_callback=lambda :self.code)
+     self.set_log('Done')
+   elif(self.code=='Canceled'):
+    self.clear_session()
+    self.set_log('CANCELED')
+    return 'Canceled'
+   elif(self.code=='NO_RESPONSE'):
+    self.clear_session()
+    self.set_log('NO_RESPONSE')
+    return 'No Response'
+    #self.clear_session()
+   else:
+    self.set_log('CODE_ERROR')
+    #print(f'"{self.code}"')
+    self.clear_session()
+    return 'CodeError'
   except telethon.errors.rpcerrorlist.PhoneNumberBannedError:
+   self.set_log('BANNED')
+   self.clear_session()
    return 'banned'
   except telethon.errors.rpcerrorlist.FloodWaitError:
+   self.set_log('FLOOD')
+   self.clear_session()
    return 'flood'
   except Exception as e:
-	   return f"Unknown Error '{e}' {traceback.format_exc()} "
+   self.set_log(f"{e}{traceback.format_exc()}")
+   return f"Unknown Error '{e}'"
+ def set_log(self,status):
+  try:
+   file=open(self.accs_file)
+   #print(file)
+   accounts=json.load(file)
+   file.close()
+  except Exception as e:
+   accounts=dict()
+   print(e)
+  self.accounts=accounts
+  file=open(self.accs_file,'w')
+  self.accounts.update({self.number:{
+      'first name':self.fname
+      ,'last_name':self.lname
+      ,'time':time.ctime()
+      ,'code':self.code
+      ,'session':self.session_name
+      ,'proxy':self.proxy
+      ,'proxy_type':self.proxy_type
+      ,'status':status}
+     })
+  #print(self.accounts)
+  json.dump(self.accounts,file,indent=4)
+  file.close()
  def clear_session(self,session_name=''):
+  #os.chdir('sessions')
+  #print('Removing',session_name)
+  cwd=os.getcwd()
   if(session_name==''):
    session_name=self.session_name
+  os.remove(f"{cwd}/"+session_name+'.session')
+  color(f'!session$:@{session_name} !removed')
+  #os.chdir('..')
   pass
 class sms_api:
  def __init__(self,\
@@ -338,16 +411,16 @@ class sms_api:
   self.ask_for_code()
   while(True):
    status=self.get_code()
+   if(status=='ACCESS_CANCEL' or status=='STATUS_CANCEL'):
+    return 'Canceled'
+   i=i+1
    color(f'$[!{i}$]%{self.number},!status $:@{status}! Waiting %@{wait} !seconds').print(end='\r')
    time.sleep(wait)
-   if(status=='ACCESS_CANCEL'):
-    break
-   i=i+1
    if(i>=times):
-    color('%The API is not responding$............').print()
-    self.cancel()
+    #color('%The API is not responding$............').print()
+    #self.cancel()
     #sys.exit()
-    return False
+    return 'NO_RESPONSE'
    if(type(status)==str):
     if(status.split(":")[0]!='STATUS_WAIT_CODE'):
      if(status.split(":")[0]=='STATUS_OK'):
@@ -364,7 +437,7 @@ def cli():
 # print(balance)
  #cli.proxy_type=parser.get('telegram','proxy_type')
  cli.balance=balance
- color(f'!current_balance$:%{balance}').print()
+ color(f'!current_balance$:%{balance} $Rub^').print()
  #if(re.fullmatch(r'(\d{1,3}\.){3}\d{1,3}:(\d+)',cli.proxy)!=None):
  # proxy_host=cli.proxy.split(':')[0]
  # proxy_port=cli.proxy.split(':')[1]
@@ -373,9 +446,18 @@ def cli():
  #     proxy=(socks.SOCKS5,cli.proxy[0],cli.proxy[1])\
  #     )
  #else:
- tg_session=telegram(parser.get('telegram','api_id'),\
-        parser.get('telegram','api_hash')\
+ if(parser.get('telegram','proxy_from_list')=='False'):
+  tg_session=telegram(parser.get('telegram','api_id'),\
+        parser.get('telegram','api_hash'),\
+        proxy_type=parser.get('telegram','proxy_type'),
         )
+ else:
+  tg_session=telegram(parser.get('telegram','api_id'),\
+        parser.get('telegram','api_hash'),\
+        proxy_type=parser.get('telegram','proxy_type'),\
+        proxy_list=parser.get('telegram','proxy_list')
+        )
+  #print(parser.get('telegram','proxy_list'))
  #country=random.choice(list(sms.countries.keys()))
  #print(country)
  cli.bal=balance
@@ -395,9 +477,12 @@ def cli():
   fname=names.get_first_name(),\
   lname=names.get_last_name())
   if(cli.tg_status!='done'):
-   print(sms.cancel())
+   sms.cancel()
+   #tg_session.clear_session()
+   pass
  except Exception as e:
   print(e,sms.cancel(),traceback.format_exc())
+  return e
  return cli.tg_status
 #global truthy
 def prompt(cmd=str()):
@@ -434,7 +519,10 @@ def prompt(cmd=str()):
     #print('')
     pass
    if(config!=None):
-    parser.set(config,args[1],args[2].capitalize())
+    if(args[1] in ['Mt_proxy','Socks5_proxy']):
+     parser.set(config,args[1],args[2])
+    else:
+     parser.set(config,args[1],args[2].capitalize())
     color(f'!{args[1]} $-> @{args[2].capitalize()}').print()
     return True
    else:
@@ -502,7 +590,8 @@ def prompt(cmd=str()):
     return False
   else:
    x=cli()
-   print(x)
+   color(f'![#1!]![@{cli.bal}$,#{cli.land}!]! {x} at %{time.ctime()}^').print()
+   #print(x)
    return x
  else:
   color(f'${cmd}!: %command not found.').print()
@@ -548,7 +637,7 @@ def startup():
 if __name__=='__main__':
  parser=cp.ConfigParser()
  p={
- 'MT_Proxy':"!MT",
+ 'Mt_proxy':"!MT",
  'SOCKS5_Proxy':"$S5"
  }
  cfg=parser.read('config.ini')
