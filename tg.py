@@ -656,7 +656,8 @@ if __name__=='__main__':
  parser=cp.ConfigParser()
  p={
  'Mt_proxy':"!MT",
- 'SOCKS5_Proxy':"$S5"
+ 'SOCKS5_Proxy':"$S5",
+ str():str()
  }
  cfg=parser.read('config.ini')
  os.system('clear')
@@ -689,7 +690,7 @@ if __name__=='__main__':
   try:
    prompt(\
     cmd=input(\
-    color(f'@[{p[parser.get("telegram","proxy_type")]}@]#cmd !~$>@ ').txt #coloring prompt
+    color(f'@[{p.get(parser.get("telegram","proxy_type"),str("n"))}@]#cmd !~$>@ ').txt #coloring prompt
     ) #closing input
     )
   except KeyboardInterrupt:
@@ -706,4 +707,4 @@ if __name__=='__main__':
   except EOFError:
    print('GoodBye :(')
    sys.exit(0)
-
+   
