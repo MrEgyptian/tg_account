@@ -14,6 +14,10 @@ else:
 class telegram:
  def __init__(self,api_id,api_hash,proxy_choosing='Random',proxy=None,proxy_type=str(),proxy_list=str()):
   self.api_id=api_id;self.api_hash=api_hash;
+  p_list=['mt_proxy','socks5']
+  if proxy_type not in p_list:
+   proxy_type=None
+  print(proxy,proxy_type)
   if(type(proxy)==tuple and len(proxy)==3):
    self.proxy=proxy
   else:
@@ -21,12 +25,12 @@ class telegram:
   self.proxy_type=proxy_type
   #print(locals())
 #  print(proxy_list,os.path.isfile(proxy_list))
-  if(os.path.isfile(proxy_list)==False):
-   proto=self.proto=parser.get(proxy_type,'protocol')
-   server=self.server=parser.get(proxy_type,'host')
-   port=self.port=parser.get(proxy_type,'port')
-   secret=self.secret=parser.get(proxy_type,'secret')
-  elif(os.path.isfile(proxy_list)==True):
+  if(os.path.isfile(proxy_list)==False and self.proxy_type!=None):
+   proto=self.proto=parser.get(proxy_type,'protocol') if proxy_type.lower() in p_list else None
+   server=self.server=parser.get(proxy_type,'host') if proxy_type.lower() in p_list else None
+   port=self.port=parser.get(proxy_type,'port') if proxy_type.lower() in p_list else None
+   secret=self.secret=parser.get(proxy_type,'secret') if proxy_type.lower() in p_list else None
+  elif(os.path.isfile(proxy_list)==True and self.proxy_type!=None):
    lines=open(proxy_list).readlines()
    self.proxies=[str(i).strip().split(":")\
     for i in lines if not(str(i).startswith('#'))]
@@ -40,14 +44,14 @@ class telegram:
      raise Exception('wrong protocol')
    except:
     proto='Randomized intermediate'
-  conns={
-   'Abridged':conn.ConnectionTcpMTProxyAbridged,
-   'Intermediate':conn.ConnectionTcpMTProxyIntermediate,
-   'Randomized intermediate':conn.ConnectionTcpMTProxyRandomizedIntermediate
-   }
-  self.proxy=(server,port,secret)
-  self.connection=conns.get(proto)
-  print(*self.proxy)
+   conns={
+    'Abridged':conn.ConnectionTcpMTProxyAbridged,
+    'Intermediate':conn.ConnectionTcpMTProxyIntermediate,
+    'Randomized intermediate':conn.ConnectionTcpMTProxyRandomizedIntermediate
+    }
+   self.proxy=(server,port,secret)
+   self.connection=conns.get(proto)
+   print(*self.proxy)
    #print(proto,self.connection)
  def create_account(self,number,fname='user'\
  ,lname=str(),accs_file='created_accounts.json',\
@@ -131,7 +135,7 @@ class telegram:
   if(session_name==''):
    session_name=self.session_name
   #os.remove(f"{cwd}/"+session_name+'.session')
-  color(f'!session$:@{session_name} !removed').print()
+  color(f'!session$:@{session_name} !removed')
   #os.chdir('..')
   pass
 class sms_api:
@@ -446,6 +450,7 @@ class sms_api:
 def cli():
  api_key=parser.get('sim_api','active_ru_key')
  sms=sms_api(key=api_key)
+ cli.sms=sms
  balance=sms.get_balance()
 # print(balance)
  #cli.proxy_type=parser.get('telegram','proxy_type')
@@ -514,8 +519,8 @@ def prompt(cmd=str()):
     #Making 10 accounts:
       @start 10
     #Making a single account:
-      @start
-  ''').print()
+      @start'''
+  ).print()
   return True
  elif('set' in cmd):
   args=cmd.split('\x20')
@@ -656,12 +661,12 @@ if __name__=='__main__':
  cfg=parser.read('config.ini')
  os.system('clear')
  color('^type $"!help$"^ if you need help %:$)').print()
- color("""
+ color('''
 !╔╦╗!╔═╗   @╔═╗#┌─┐┌─┐┌─┐┬ ┬┌┐┌┌┬┐  @╔═╗#┬─┐┌─┐┌─┐┌┬┐┌─┐┬─┐
 ! ║ !║ ╦───@╠═╣#│  │  │ ││ ││││ │   @║  #├┬┘├┤ ├─┤ │ │ │├┬┘
 ! ╩ !╚═╝   @╩ ╩#└─┘└─┘└─┘└─┘┘└┘ ┴   @╚═╝#┴└─└─┘┴ ┴ ┴ └─┘┴└─
-            @github.com#/%ahmed$M%ahmed$8a^
- """).print()
+            @github.com#/%ahmed$M%ahmed$8a^ '''
+            ).print()
  try:
   startup()
  except KeyboardInterrupt:
@@ -689,6 +694,7 @@ if __name__=='__main__':
     )
   except KeyboardInterrupt:
    try:
+    cli.sms.cancel()
     exit_prompt=str(input('\nis it time to say goodbye [Y/n]: '))
    except:
     exit_prompt='n'
