@@ -130,8 +130,8 @@ class telegram:
   cwd=os.getcwd()
   if(session_name==''):
    session_name=self.session_name
-  os.remove(f"{cwd}/"+session_name+'.session')
-  color(f'!session$:@{session_name} !removed')
+  #os.remove(f"{cwd}/"+session_name+'.session')
+  color(f'!session$:@{session_name} !removed').print()
   #os.chdir('..')
   pass
 class sms_api:
