@@ -17,7 +17,7 @@ class telegram:
   p_list=['mt_proxy','socks5']
   if proxy_type not in p_list:
    proxy_type=None
-  print(proxy,proxy_type)
+#  print(proxy,proxy_type)
   if(type(proxy)==tuple and len(proxy)==3):
    self.proxy=proxy
   else:
@@ -657,9 +657,21 @@ if __name__=='__main__':
  p={
  'Mt_proxy':"!MT",
  'SOCKS5_Proxy':"$S5",
- str():str()
+ str():'%NA'
  }
- cfg=parser.read('config.ini')
+ def check_index(l,i):
+  try:
+   l[i]
+   return True
+  except IndexError:
+   return False
+ if('-c' in sys.argv):
+  if(check_index(sys.argv,sys.argv.index('-c')+1)):
+   cfg=parser.read(sys.argv[sys.argv.index('-c')+1])
+  else:
+   cfg=parser.read('config.ini')
+ else:
+  cfg=parser.read('config.ini')
  os.system('clear')
  color('^type $"!help$"^ if you need help %:$)').print()
  color('''
@@ -690,7 +702,7 @@ if __name__=='__main__':
   try:
    prompt(\
     cmd=input(\
-    color(f'@[{p.get(parser.get("telegram","proxy_type"),str("n"))}@]#cmd !~$>@ ').txt #coloring prompt
+    color(f'@[{p.get(parser.get("telegram","proxy_type"),str("%n"))}@]#cmd !~$>@ ').txt #coloring prompt
     ) #closing input
     )
   except KeyboardInterrupt:
