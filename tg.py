@@ -17,7 +17,8 @@ class telegram:
   p_list=['mt_proxy','socks5']
   if proxy_type.lower() not in p_list:
    proxy_type=None
-  proxy_type=proxy_type.capitalize()
+  else:
+   proxy_type=proxy_type.capitalize()
  # print(proxy,proxy_type,os.path.isfile(proxy_list))
   if(type(proxy)==tuple and len(proxy)==3):
    self.proxy=proxy
