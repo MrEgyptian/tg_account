@@ -15,9 +15,10 @@ class telegram:
  def __init__(self,api_id,api_hash,proxy_choosing='Random',proxy=None,proxy_type=str(),proxy_list=str()):
   self.api_id=api_id;self.api_hash=api_hash;
   p_list=['mt_proxy','socks5']
-  if proxy_type not in p_list:
+  if proxy_type.lower() not in p_list:
    proxy_type=None
-#  print(proxy,proxy_type)
+  proxy_type=proxy_type.capitalize()
+ # print(proxy,proxy_type,os.path.isfile(proxy_list))
   if(type(proxy)==tuple and len(proxy)==3):
    self.proxy=proxy
   else:
@@ -26,10 +27,18 @@ class telegram:
   #print(locals())
 #  print(proxy_list,os.path.isfile(proxy_list))
   if(os.path.isfile(proxy_list)==False and self.proxy_type!=None):
-   proto=self.proto=parser.get(proxy_type,'protocol') if proxy_type.lower() in p_list else None
+   proto=self.proto=parser.get(proxy_type,'protocol').capitalize() if proxy_type.lower() in p_list else None
    server=self.server=parser.get(proxy_type,'host') if proxy_type.lower() in p_list else None
    port=self.port=parser.get(proxy_type,'port') if proxy_type.lower() in p_list else None
    secret=self.secret=parser.get(proxy_type,'secret') if proxy_type.lower() in p_list else None
+   conns={
+    'Abridged':conn.ConnectionTcpMTProxyAbridged,
+    'Intermediate':conn.ConnectionTcpMTProxyIntermediate,
+    'Randomized intermediate':conn.ConnectionTcpMTProxyRandomizedIntermediate
+    }
+   self.proxy=(server,port,secret)
+   self.connection=conns.get(proto)
+   print(*self.proxy)
   elif(os.path.isfile(proxy_list)==True and self.proxy_type!=None):
    lines=open(proxy_list).readlines()
    self.proxies=[str(i).strip().split(":")\
