@@ -5,6 +5,7 @@ json,random,socks,\
 time,traceback
 import configparser as cp
 import telethon
+import TelethonFakeTLS
 from telethon import TelegramClient
 from telethon import connection as conn
 if(os.name=='posix'):
@@ -25,6 +26,7 @@ class telegram:
   else:
    self.proxy=None
   self.proxy_type=proxy_type
+  ##################################################################################################################
   #print(locals())
 #  print(proxy_list,os.path.isfile(proxy_list))
   if(os.path.isfile(proxy_list)==False and self.proxy_type!=None):
@@ -38,8 +40,8 @@ class telegram:
     'Randomized intermediate':conn.ConnectionTcpMTProxyRandomizedIntermediate
     }
    self.proxy=(server,port,secret)
-   self.connection=conns.get(proto)
-   print(*self.proxy)
+   #self.connection=TelethonFakeTLS.ConnectionTcpMTProxyFakeTLS
+   self.connection=conn.ConnectionTcpMTProxyIntermediate
   elif(os.path.isfile(proxy_list)==True and self.proxy_type!=None):
    lines=open(proxy_list).readlines()
    self.proxies=[str(i).strip().split(":")\
@@ -65,44 +67,46 @@ class telegram:
    #print(proto,self.connection)
  def create_account(self,number,fname='user'\
  ,lname=str(),accs_file='created_accounts.json',\
- code=lambda :'code'):
+ code=lambda :'code',api=None):
   print(number,fname,lname)
   self.accs_file=accs_file
   self.fname=fname
   self.lname=lname
   self.number=number
   self.session_name=f'sessions/{fname}-{lname}_{number}'
-  self.code=str(code())
   #print(f"'{self.code}'")
   try:
    if(self.proxy_type!=None):
+    print(*self.proxy)
     client = TelegramClient(self.session_name,\
       self.api_id, self.api_hash,connection=self.connection,proxy=self.proxy)
    else:
     client = TelegramClient(self.session_name,\
      self.api_id, self.api_hash)
-   if(re.fullmatch('[0-9]{5}',self.code)!=None):
-     client.start(\
+   if(True):
+    client.start(\
        phone=number,\
        force_sms=True,\
-       first_name=fname,\
-       last_name=lname,\
-       code_callback=lambda :self.code)
-     self.set_log('Done')
-   elif(self.code=='Canceled'):
-    self.clear_session()
-    self.set_log('CANCELED')
-    return 'Canceled'
-   elif(self.code=='NO_RESPONSE'):
-    self.clear_session()
-    self.set_log('NO_RESPONSE')
-    return 'No Response'
+       first_name='user',\
+       last_name='',\
+       code_callback=code)
+    self.set_log('Done')
+    self.code=api.code
+    return 'done'
+   #elif(self.code=='Canceled'):
+   # self.clear_session()
+   # self.set_log('CANCELED')
+   # return 'Canceled'
+   #elif(self.code=='NO_RESPONSE'):
+   # self.clear_session()
+   # self.set_log('NO_RESPONSE')
+   # return 'No Response'
     #self.clear_session()
-   else:
-    self.set_log('CODE_ERROR')
+   #else:
+   # self.set_log('CODE_ERROR')
     #print(f'"{self.code}"')
-    self.clear_session()
-    return 'CodeError'
+   # self.clear_session()
+    #return 'CodeError'
   except telethon.errors.rpcerrorlist.PhoneNumberBannedError:
    self.set_log('BANNED')
    self.clear_session()
@@ -111,6 +115,12 @@ class telegram:
    self.set_log('FLOOD')
    self.clear_session()
    return 'flood'
+  except RuntimeError:
+   return "error"
+  except AssertionError:
+   self.clear_session()
+   self.set_log("PROXY_ERROR")
+   return "Proxy Error"
   except Exception as e:
    self.set_log(f"{e}{traceback.format_exc()}")
    return f"Unknown Error '{e}'"
@@ -129,7 +139,7 @@ class telegram:
       'first name':self.fname
       ,'last_name':self.lname
       ,'time':time.ctime()
-      ,'code':self.code
+      #,'code':self.code
       ,'session':self.session_name
       ,'proxy':self.proxy
       ,'proxy_type':self.proxy_type
@@ -345,7 +355,11 @@ class sms_api:
   resp=requests.get(self.api_url,params=payload)
   if resp.status_code==200:
    bal=resp.text.split(':')
-   self.balance={bal[0]:bal[1]}
+   try:
+    self.balance={bal[0]:bal[1]}
+   except:
+    print("Error :",str().join(bal))
+    sys.exit(1)
   else:
    raise Exception(f'Error {resp.status_code}')
   return self.balance['ACCESS_BALANCE']
@@ -438,21 +452,22 @@ class sms_api:
   self.ask_for_code()
   while(True):
    status=self.get_code()
-   if(status=='ACCESS_CANCEL' or status=='STATUS_CANCEL'):
-    return 'Canceled'
-   i=i+1
    color(f'$[!{i}$]%{self.number},!status $:@{status}! Waiting %@{wait} !seconds').print(end='\r')
    time.sleep(wait)
+   if(status=='ACCESS_CANCEL'):
+    break
+   i=i+1
    if(i>=times):
-    #color('%The API is not responding$............').print()
-    #self.cancel()
+    color('%The API is not responding$............').print()
+    self.cancel()
     #sys.exit()
-    return 'NO_RESPONSE'
+    return False
    if(type(status)==str):
     if(status.split(":")[0]!='STATUS_WAIT_CODE'):
      if(status.split(":")[0]=='STATUS_OK'):
       code=status.split(':')[1]
-      print(code)
+      #print(code)
+      self.code=code
       return code
      break
      return False
@@ -503,11 +518,14 @@ def cli():
    times=int(parser.get('sim_api','sms_wait_times'))
    ),\
   fname=names.get_first_name(),\
-  lname=names.get_last_name())
+  lname=names.get_last_name(),\
+  api=sms)
   if(cli.tg_status!='done'):
    sms.cancel()
    #tg_session.clear_session()
    pass
+  else:
+   return True
  except Exception as e:
   print(e,sms.cancel(),traceback.format_exc())
   return e
