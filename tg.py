@@ -22,6 +22,10 @@ class telegram:
    proxy_type=proxy_type.capitalize()
  # print(proxy,proxy_type,os.path.isfile(proxy_list))
   if(type(proxy)==tuple and len(proxy)==3):
+   proxy=list(proxy)
+   #print(123)
+   proxy[1]=int(proxy[1])
+   proxy=tuple(proxy)
    self.proxy=proxy
   else:
    self.proxy=None
@@ -32,23 +36,24 @@ class telegram:
   if(os.path.isfile(proxy_list)==False and self.proxy_type!=None):
    proto=self.proto=parser.get(proxy_type,'protocol').capitalize() if proxy_type.lower() in p_list else None
    server=self.server=parser.get(proxy_type,'host') if proxy_type.lower() in p_list else None
-   port=self.port=parser.get(proxy_type,'port') if proxy_type.lower() in p_list else None
+   port=self.port=int(parser.get(proxy_type,'port')) if proxy_type.lower() in p_list else None
    secret=self.secret=parser.get(proxy_type,'secret') if proxy_type.lower() in p_list else None
    conns={
     'Abridged':conn.ConnectionTcpMTProxyAbridged,
     'Intermediate':conn.ConnectionTcpMTProxyIntermediate,
     'Randomized intermediate':conn.ConnectionTcpMTProxyRandomizedIntermediate
     }
-   self.proxy=(server,port,secret)
+   self.proxy=(server,int(port),secret)
    #self.connection=TelethonFakeTLS.ConnectionTcpMTProxyFakeTLS
-   self.connection=conn.ConnectionTcpMTProxyIntermediate
+   self.connection=conn.ConnectionTcpMTProxyRandomizedIntermediate
+   print(secret,len(secret))
   elif(os.path.isfile(proxy_list)==True and self.proxy_type!=None):
    lines=open(proxy_list).readlines()
    self.proxies=[str(i).strip().split(":")\
     for i in lines if not(str(i).startswith('#'))]
    p=random.choice(self.proxies)
    server=p[0]
-   port=p[1]
+   port=int(p[1])
    secret=p[2]
    try:
     proto=p[3].capitalize()
@@ -61,9 +66,9 @@ class telegram:
     'Intermediate':conn.ConnectionTcpMTProxyIntermediate,
     'Randomized intermediate':conn.ConnectionTcpMTProxyRandomizedIntermediate
     }
-   self.proxy=(server,port,secret)
+   self.proxy=(server,int(port),secret)
    self.connection=conns.get(proto)
-   print(*self.proxy)
+#   print(*self.proxy)
    #print(proto,self.connection)
  def create_account(self,number,fname='user'\
  ,lname=str(),accs_file='created_accounts.json',\
@@ -79,7 +84,10 @@ class telegram:
    if(self.proxy_type!=None):
     print(*self.proxy)
     client = TelegramClient(self.session_name,\
-      self.api_id, self.api_hash,connection=self.connection,proxy=self.proxy)
+      self.api_id, self.api_hash,\
+      #connection=self.connection\
+       connection=conn.ConnectionTcpMTProxyRandomizedIntermediate
+      ,proxy=self.proxy)
    else:
     client = TelegramClient(self.session_name,\
      self.api_id, self.api_hash)
@@ -123,6 +131,7 @@ class telegram:
    return "Proxy Error"
   except Exception as e:
    self.set_log(f"{e}{traceback.format_exc()}")
+   input(color(f"\n!{e}\n %Press enter to continue :(").txt)
    return f"Unknown Error '{e}'"
  def set_log(self,status):
   try:
@@ -742,8 +751,10 @@ if __name__=='__main__':
    if(exit_prompt.lower()=='n'):
     print('it\'s nice being with you :)')
    else:
+    cli.sms.cancel()
     print('Bye :"(')
     sys.exit(0)
   except EOFError:
+   cli.sms.cancel()
    print('GoodBye :(')
    sys.exit(0)
