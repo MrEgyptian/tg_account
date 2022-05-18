@@ -5,7 +5,7 @@ json,random,socks,\
 time,traceback
 import configparser as cp
 import telethon
-import TelethonFakeTLS
+#import TelethonFakeTLS
 from telethon import TelegramClient
 from telethon import connection as conn
 if(os.name=='posix'):
