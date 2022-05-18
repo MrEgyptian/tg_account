@@ -123,7 +123,12 @@ class telegram:
    self.set_log('FLOOD')
    self.clear_session()
    return 'flood'
+  except telethon.errors.rpcerrorlist.PhoneNumberInvalidError:
+   self.set_log('INVALID')
+   self.clear_session()
+   return 'invalid'
   except RuntimeError:
+   self.set_log("RuntimeError")
    return "error"
   except AssertionError:
    self.clear_session()
@@ -449,12 +454,13 @@ class sms_api:
   payload={
    'api_key':self.token,
    'action':'setStatus',
-   'status':'9',
+   'status':'6',
    'id':n_id
    }
   resp=requests.get(self.api_url,params=payload)
   status=resp.text
   #self.get_code_status=status
+  print("\nFinished",status)
   return status
  def return_code(self,wait=5,times=10):
   i=1
@@ -534,6 +540,7 @@ def cli():
    #tg_session.clear_session()
    pass
   else:
+   sms.finish()
    return True
  except Exception as e:
   print(e,sms.cancel(),traceback.format_exc())
